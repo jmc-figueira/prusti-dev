@@ -23,13 +23,13 @@
           rustc = rust;
         };
 
-        prusti-version = "${self.tag or "${self.lastModifiedDate}.${self.shortRev or "dirty"}"}";
+        prusti-version = "0.2.0-${self.tag or "${self.lastModifiedDate}.${self.shortRev or "dirty"}"}";
       in rec {
         packages = {
           prusti = naersk-lib.buildPackage {
             name = "prusti";
             version = "${prusti-version}";
-            root = ./.;
+            root = pkgs.lib.cleanSource ./.;
             buildInputs = [
               pkgs.pkg-config
               pkgs.wget
@@ -97,6 +97,53 @@
               cp ${src} $out/asm.jar
             '';
           };
+        };
+
+        checks = {
+          # prusti-test = naersk-lib.buildPackage {
+          #   name = "prusti-test";
+          #   version = "${prusti-version}";
+          #   root = ./.;
+          #   checkInputs = [
+          #     pkgs.pkg-config
+          #     pkgs.wget
+          #     pkgs.gcc
+          #     pkgs.openssl
+          #     pkgs.jdk11
+          #     packages.viper
+          #     packages.ow2_asm
+          #   ];
+
+          #   doCheck = true;
+
+          #   override = _: {
+          #     preBuild = ''
+          #       export LD_LIBRARY_PATH="${pkgs.jdk11}/lib/openjdk/lib/server"
+          #       export VIPER_HOME="${packages.viper}/backends"
+          #       export Z3_EXE="${packages.viper}/z3/bin/z3"
+          #       export ASM_JAR="${packages.ow2_asm}/asm.jar"
+          #     '';
+          #     preCheck = ''
+          #       export RUST_SYSROOT="${rust}"
+          #       export JAVA_HOME="${pkgs.jdk11}/lib/openjdk"
+          #       export LD_LIBRARY_PATH="${pkgs.jdk11}/lib/openjdk/lib/server"
+          #       export VIPER_HOME="${packages.viper}/backends"
+          #       export Z3_EXE="${packages.viper}/z3/bin/z3"
+          #     '';
+          #   };
+          # };
+
+          prusti-simple-test = pkgs.runCommand "prusti-simple-test" {
+            buildInputs = [
+              defaultPackage
+              rust
+            ];
+          }
+          ''
+            cargo new --name example $out/example
+            sed -i '1s/^/use prusti_contracts::*;\n/;s/println.*$/assert!(true);/' $out/example/src/main.rs
+            cargo-prusti --manifest-path=$out/example/Cargo.toml
+          '';
         };
 
         defaultPackage = packages.prusti;
